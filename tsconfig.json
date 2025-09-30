@@ -2,15 +2,11 @@
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // File Layout
-    "rootDir": "src",
-    "outDir": "dist",
-
-    // Environment Settings
     "module": "es2020",
     "target": "es2020",
     "moduleResolution": "bundler",
     "lib": ["dom", "dom.iterable", "es2020"],
-    "types": ["d3"],
+    "types": ["d3", "vite/client"],
 
     // Other Outputs
     "sourceMap": true,
@@ -20,6 +16,10 @@
     // Type Checking
     "strict": false,
     "esModuleInterop": true,
-    "resolveJsonModule": true
-  }
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "noEmit": true
+  },
+  "include": ["src", "vite.config.ts"],
+  "references": []
 }

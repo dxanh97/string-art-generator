@@ -1,54 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>String Art Generator</title>
-    <script src="d3.v7.min.js"></script>
-    <script type="module" src="dist/index.js"></script>
-    <link rel="stylesheet" href="index.css" />
-
-    <!-- display -->
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>String Art Generator</title>
   </head>
-
   <body>
-    <div id="ui">
-      <img id="snapshot" src="" />
-      <input type="file" accept="image/jpeg, image/png, image/jpg" />
-      <br />
-
-      <div id="controls">
-        <button id="generate" type="button"><b>Generate</b></button>
-      </div>
-
-      <details id="download" open>
-        <summary>Downloads</summary>
-        <button id="nailSequence" type="button">Nail sequence</button>
-        <button id="frameDownload" type="button">Frame with numbering</button>
-      </details>
-
-      <details id="basic" open>
-        <label for="numNails">Number of nails:</label>
-        <input
-          id="numNails"
-          class="slider"
-          type="number"
-          value="300"
-          min="10"
-          max="2000"
-          step="1"
-        />
-        <label for="numConnections">Max # of connections:</label>
-        <input
-          id="numConnections"
-          class="slider"
-          type="number"
-          value="10000"
-          min="100"
-          max="15000"
-          step="1"
-        />
-      </details>
-    </div>
+    <div id="root"></div>
+    <script src="/d3.v7.min.js"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
