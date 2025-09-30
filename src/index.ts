@@ -1,12 +1,6 @@
-import { graph, renderImage, registerGUI } from './core.js';
+import { constrain, graph, renderImage, type GraphOptions } from './core.js';
 
 type NumberInput = HTMLInputElement;
-
-type GUIBindings = {
-  generate: { element: HTMLButtonElement };
-  numNails: { element: NumberInput };
-  numConnections: { element: NumberInput };
-};
 
 function requireButton(id: string): HTMLButtonElement {
   const element = document.getElementById(id);
@@ -30,16 +24,47 @@ const frameDownloadButton = requireButton('frameDownload');
 const numNailsInput = requireNumberInput('numNails');
 const numConnectionsInput = requireNumberInput('numConnections');
 
-const gui: GUIBindings = {
-  generate: { element: generateButton },
-  numNails: { element: numNailsInput },
-  numConnections: { element: numConnectionsInput },
-};
+const originalGenerateLabel = generateButton.innerHTML;
 
-registerGUI(gui);
+function handleProgress(progress: number): void {
+  if (progress >= 1 || Number.isNaN(progress)) {
+    generateButton.innerHTML = originalGenerateLabel;
+    return;
+  }
+  const percent = (progress * 100).toFixed(2);
+  generateButton.innerHTML = `<b>Generating... ${percent}%</b>`;
+}
+
+function clampInputValue(input: NumberInput): void {
+  const min = input.min === '' ? Number.NEGATIVE_INFINITY : Number(input.min);
+  const max = input.max === '' ? Number.POSITIVE_INFINITY : Number(input.max);
+  const parsed = Number(input.value);
+  if (!Number.isFinite(parsed)) {
+    return;
+  }
+  const clamped = constrain(parsed, min, max);
+  if (clamped !== parsed) {
+    input.value = String(clamped);
+  }
+}
+
+function readOptions(): GraphOptions {
+  clampInputValue(numNailsInput);
+  clampInputValue(numConnectionsInput);
+  return {
+    numNails: Number(numNailsInput.value),
+    maxConnections: Number(numConnectionsInput.value),
+    onProgress: handleProgress,
+  };
+}
+
+function triggerRender(url?: string): void {
+  const options = readOptions();
+  renderImage(options, url);
+}
 
 generateButton.addEventListener('click', () => {
-  renderImage();
+  triggerRender();
 });
 
 nailSequenceButton.addEventListener('click', () => {
@@ -50,12 +75,32 @@ frameDownloadButton.addEventListener('click', () => {
   graph.downloadFrame();
 });
 
+[numNailsInput, numConnectionsInput].forEach((input) => {
+  input.addEventListener('change', () => {
+    triggerRender();
+  });
+  input.addEventListener('blur', () => {
+    clampInputValue(input);
+  });
+});
+
 const fileInput = document.querySelector("input[type='file']");
 if (!(fileInput instanceof HTMLInputElement)) {
   throw new Error('File input element not found');
 }
 fileInput.addEventListener('change', function (this: HTMLInputElement) {
   if (this.files && this.files[0]) {
-    renderImage(URL.createObjectURL(this.files[0]));
+    triggerRender(URL.createObjectURL(this.files[0]));
   }
 });
+
+triggerRender();
+
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('showUI') === 'false') {
+  const ui = document.getElementById('ui');
+  if (ui) {
+    ui.style.display = 'none';
+  }
+  graph.svg.style('width', '100vw').style('left', '0px');
+}

@@ -81,7 +81,10 @@ class Line {
   constructor(start: Point, end: Point) {
     this.start = start;
     this.end = end;
-    this.startAdj = graph.image.getImagePoint(this.start, graph.frameBoundingBox);
+    this.startAdj = graph.image.getImagePoint(
+      this.start,
+      graph.frameBoundingBox,
+    );
     this.endAdj = graph.image.getImagePoint(this.end, graph.frameBoundingBox);
     this.pixels = [];
     this.fuzzRadius = 0;
@@ -207,7 +210,10 @@ class Thread {
     chords.forEach((line, i) => {
       if (line) {
         let dist = line.getLineDiff(this.color);
-        if (this.previousConnections[this.currentNail] && this.previousConnections[this.currentNail][i] === true) {
+        if (
+          this.previousConnections[this.currentNail] &&
+          this.previousConnections[this.currentNail][i] === true
+        ) {
           dist = 0;
         }
         if (dist < minDist) {
@@ -258,7 +264,8 @@ class Thread {
   }
 
   getCurrentLine() {
-    const start = graph.nailsPosition[this.nailOrder[this.nailOrder.length - 1]];
+    const start =
+      graph.nailsPosition[this.nailOrder[this.nailOrder.length - 1]];
     const end = graph.nailsPosition[this.nailOrder[this.nailOrder.length - 2]];
     return [
       [start.x, start.y],
@@ -267,29 +274,33 @@ class Thread {
   }
 }
 
-let guiRef: any | null = null;
+export type ProgressCallback = (progress: number) => void;
 
-const getGUI = () => {
-  if (!guiRef) {
-    throw new Error('GUI not registered');
-  }
-  return guiRef;
-};
+export interface GraphOptions {
+  numNails: number;
+  maxConnections: number;
+  onProgress?: ProgressCallback;
+}
 
-export const registerGUI = (gui: any) => {
-  guiRef = gui;
-};
+const noopProgress: ProgressCallback = () => {};
 
 export const graph: any = {
-  init() {
-    const GUI = getGUI();
+  options: {
+    numNails: 300,
+    maxConnections: 10000,
+    onProgress: noopProgress,
+  } as GraphOptions,
+  progressCallback: noopProgress,
+  init(options: GraphOptions) {
+    this.options = { ...options };
+    this.progressCallback = options.onProgress ?? noopProgress;
     this.renderTimeoutId = null;
     this.renderIter = 0;
     this.width = 30;
     this.height = this.width;
     this.radius = this.width / 3;
-    this.maxIter = Number(GUI.numConnections.element.value);
-    this.numNails = Number(GUI.numNails.element.value);
+    this.maxIter = options.maxConnections;
+    this.numNails = options.numNails;
 
     this.downscaleFactor = 4;
 
@@ -306,7 +317,12 @@ export const graph: any = {
       .select('body')
       .insert('svg', ':first-child')
       .attr('width', '100vw')
-      .attr('viewBox', [-this.width / 2, -this.height / 2, this.width, this.height]);
+      .attr('viewBox', [
+        -this.width / 2,
+        -this.height / 2,
+        this.width,
+        this.height,
+      ]);
     this.svg.append('g');
     this.svg.attr('desc', 'Created using michael-crum.com/string-art-gen');
 
@@ -332,7 +348,9 @@ export const graph: any = {
       .data(nailsList)
       .join('g')
       .attr('transform', (d) => {
-        const pos = framePath.node().getPointAtLength((d / this.numNails) * frameLength);
+        const pos = framePath
+          .node()
+          .getPointAtLength((d / this.numNails) * frameLength);
         this.nailsPosition.push(new Point(pos.x, pos.y));
         return `translate(${pos.x}, ${pos.y})`;
       });
@@ -353,7 +371,6 @@ export const graph: any = {
       .attr('text-anchor', 'middle')
       .text((d, i) => String(i));
 
-    this.getFrameUrl();
     framePath.style('fill', 'grey');
 
     const zoom = d3.zoom().on('zoom', handleZoom);
@@ -363,23 +380,6 @@ export const graph: any = {
     }
 
     d3.select('svg').call(zoom as any);
-  },
-  getFrameUrl() {
-    const serializer = new XMLSerializer();
-    let source = serializer.serializeToString(this.svg.node());
-
-    if (!source.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
-      source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
-    }
-    if (!source.match(/^<svg[^>]+"http:\/\/www\.w3\.org\/1999\/xlink"/)) {
-      source = source.replace(
-        /^<svg/,
-        '<svg xmlns:xlink="http://www.w3.org/1999/xlink"',
-      );
-    }
-
-    source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
-    this.frameUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
   },
   downloadFrame() {
     const element = document.createElement('a');
@@ -391,7 +391,7 @@ export const graph: any = {
     document.body.removeChild(element);
   },
   downloadNailSeq() {
-    let output = `Generated using https://michael-crum.com/string-art-gen/\n${this.renderIter} connections in total\n\n`;
+    let output = `${this.renderIter} connections in total\n\n`;
     const length = this.threadOrder.length;
     for (let i = 0; i < length; i++) {
       const thread = this.threads[this.threadOrder[i]];
@@ -446,11 +446,23 @@ export const graph: any = {
     currentCanvas.width = image.width;
     currentCanvas.height = image.height;
     this.scratchCtx = scratchCanvas.getContext('2d');
-    this.currentCtx = currentCanvas.getContext('2d', { willReadFrequently: true });
+    this.currentCtx = currentCanvas.getContext('2d', {
+      willReadFrequently: true,
+    });
     this.currentCtx.fillStyle = 'grey';
     this.currentCtx.fillRect(0, 0, this.image.width, this.image.height);
-    this.originalCtxData = this.originalCtx.getImageData(0, 0, this.image.width, this.image.height).data;
-    this.currentCtxData = this.currentCtx.getImageData(0, 0, this.image.width, this.image.height).data;
+    this.originalCtxData = this.originalCtx.getImageData(
+      0,
+      0,
+      this.image.width,
+      this.image.height,
+    ).data;
+    this.currentCtxData = this.currentCtx.getImageData(
+      0,
+      0,
+      this.image.width,
+      this.image.height,
+    ).data;
 
     this.threads = [
       new Thread(0, new Color(0, 255, 255, 255)),
@@ -482,11 +494,8 @@ export const graph: any = {
       this.clean();
       return;
     }
-    const GUI = getGUI();
-    GUI.generate.element.innerHTML = `<b>Generating... ${(
-      (this.renderIter / this.maxIter) *
-      100
-    ).toFixed(2)}</b>%`;
+    const progress = this.maxIter === 0 ? 1 : this.renderIter / this.maxIter;
+    this.progressCallback(progress);
     minThread!.moveToNextNail(this.image);
     this.threadOrder.push(minThreadIndex!);
     if (minThread!.nailOrder.length > 1) {
@@ -499,7 +508,9 @@ export const graph: any = {
         .style('stroke-width', this.threadDiameter)
         .style(
           'stroke',
-          `rgba(${minThread!.color.r},${minThread!.color.g},${minThread!.color.b},${this.threadOpacity})`,
+          `rgba(${minThread!.color.r},${minThread!.color.g},${
+            minThread!.color.b
+          },${this.threadOpacity})`,
         )
         .style('fill', 'none');
     }
@@ -510,20 +521,20 @@ export const graph: any = {
     }, 0);
   },
   clean() {
-    const GUI = getGUI();
-    GUI.generate.element.innerHTML = '<b>Generate</b>';
+    this.progressCallback(1);
     clearTimeout(this.renderTimeoutId);
     this.svg.selectAll('g circle.nail').raise();
   },
 };
 
-export function renderImage(url?: string) {
+export function renderImage(options: GraphOptions, url?: string) {
   if (graph.svg) {
     graph.svg.selectAll('*').remove();
     graph.svg.remove();
     clearTimeout(graph.renderTimeoutId);
   }
-  graph.init();
+  graph.init(options);
+  graph.progressCallback(0);
   const img = document.getElementById('snapshot');
   if (!(img instanceof HTMLImageElement)) {
     throw new Error('Snapshot image element not found');
@@ -544,13 +555,25 @@ export function renderImage(url?: string) {
     }
 
     const maxResolution =
-      (graph.frameBoundingBox.width / graph.threadDiameter / 2) / graph.downscaleFactor;
-    const frameAspectRatio = graph.frameBoundingBox.width / graph.frameBoundingBox.height;
+      graph.frameBoundingBox.width /
+      graph.threadDiameter /
+      2 /
+      graph.downscaleFactor;
+    const frameAspectRatio =
+      graph.frameBoundingBox.width / graph.frameBoundingBox.height;
     const imageAspectRatio = img.width / img.height;
-    canvas.width = frameAspectRatio >= 1 ? maxResolution : maxResolution * frameAspectRatio;
-    canvas.height = frameAspectRatio < 1 ? maxResolution : maxResolution / frameAspectRatio;
-    const width = frameAspectRatio >= imageAspectRatio ? canvas.width : canvas.height * imageAspectRatio;
-    const height = frameAspectRatio < imageAspectRatio ? canvas.height : canvas.width / imageAspectRatio;
+    canvas.width =
+      frameAspectRatio >= 1 ? maxResolution : maxResolution * frameAspectRatio;
+    canvas.height =
+      frameAspectRatio < 1 ? maxResolution : maxResolution / frameAspectRatio;
+    const width =
+      frameAspectRatio >= imageAspectRatio
+        ? canvas.width
+        : canvas.height * imageAspectRatio;
+    const height =
+      frameAspectRatio < imageAspectRatio
+        ? canvas.height
+        : canvas.width / imageAspectRatio;
     ctx.drawImage(
       img,
       -(width - canvas.width) / 2,

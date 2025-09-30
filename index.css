@@ -53,15 +53,6 @@ svg {
     width: 76vw;
 }
 
-h1 {
-    margin-top: 0px;
-    font-size: 1.9em;
-}
-
-p {
-    margin: 0px;
-}
-
 img {
     display: inline-block;
     width: 100%;
@@ -70,17 +61,6 @@ img {
 
 canvas {
     border: 1px solid white;
-}
-
-.slider,
-.text_entry,
-#generate {
-    width: 100%;
-}
-
-.text_entry {
-    min-height: 20px;
-    overflow: wrap;
 }
 
 #generate {
