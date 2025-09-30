@@ -46,21 +46,21 @@ class RasterImage {
     this.height = height;
   }
 
-  get_image_point(svg_point: DOMPoint, bounding_box: DOMRect): Point {
+  getImagePoint(svgPoint: DOMPoint, boundingBox: DOMRect): Point {
     const x = Math.floor(
       map(
-        svg_point.x,
-        bounding_box.x,
-        bounding_box.x + bounding_box.width,
+        svgPoint.x,
+        boundingBox.x,
+        boundingBox.x + boundingBox.width,
         0,
         this.width - 1,
       ),
     );
     const y = Math.floor(
       map(
-        svg_point.y,
-        bounding_box.y,
-        bounding_box.y + bounding_box.height,
+        svgPoint.y,
+        boundingBox.y,
+        boundingBox.y + boundingBox.height,
         0,
         this.height - 1,
       ),
@@ -72,41 +72,41 @@ class RasterImage {
 class Line {
   public start: Point;
   public end: Point;
-  public start_adj: Point;
-  public end_adj: Point;
+  public startAdj: Point;
+  public endAdj: Point;
   public pixels: Point[];
-  public fuzz_rad: number;
+  public fuzzRadius: number;
   public fade: number;
 
   constructor(start: Point, end: Point) {
     this.start = start;
     this.end = end;
-    this.start_adj = graph.img.get_image_point(this.start, graph.frame_bb);
-    this.end_adj = graph.img.get_image_point(this.end, graph.frame_bb);
+    this.startAdj = graph.image.getImagePoint(this.start, graph.frameBoundingBox);
+    this.endAdj = graph.image.getImagePoint(this.end, graph.frameBoundingBox);
     this.pixels = [];
-    this.fuzz_rad = 0;
-    this.compute_pixel_overlap();
+    this.fuzzRadius = 0;
+    this.computePixelOverlap();
 
-    this.fade = 1 / (graph.downscale_factor * 1.8);
+    this.fade = 1 / (graph.downscaleFactor * 1.8);
   }
 
   draw(ctx: CanvasRenderingContext2D, color: Color) {
     ctx.beginPath();
-    ctx.moveTo(this.start_adj.x, this.start_adj.y);
-    ctx.lineTo(this.end_adj.x, this.end_adj.y);
+    ctx.moveTo(this.startAdj.x, this.startAdj.y);
+    ctx.lineTo(this.endAdj.x, this.endAdj.y);
     ctx.lineWidth = 1;
     ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${this.fade})`;
     ctx.stroke();
   }
 
-  compute_pixel_overlap() {
+  computePixelOverlap() {
     this.pixels = [];
-    const start_point = this.start_adj;
-    const end_point = this.end_adj;
-    let x0 = start_point.x;
-    const x1 = end_point.x;
-    let y0 = start_point.y;
-    const y1 = end_point.y;
+    const startPoint = this.startAdj;
+    const endPoint = this.endAdj;
+    let x0 = startPoint.x;
+    const x1 = endPoint.x;
+    let y0 = startPoint.y;
+    const y1 = endPoint.y;
     const dx = Math.abs(x1 - x0);
     const dy = Math.abs(y1 - y0);
     const sx = x0 < x1 ? 1 : -1;
@@ -114,8 +114,8 @@ class Line {
     let err = dx - dy;
 
     while (true) {
-      const current_point = new Point(x0, y0);
-      this.pixels.push(current_point);
+      const currentPoint = new Point(x0, y0);
+      this.pixels.push(currentPoint);
 
       if (x0 === x1 && y0 === y1) break;
       const e2 = 2 * err;
@@ -130,139 +130,136 @@ class Line {
     }
   }
 
-  get_line_diff(color: Color) {
-    const color_arr = [color.r, color.g, color.b, color.a];
-    let total_diff = 0;
+  getLineDiff(color: Color) {
+    const colorArr = [color.r, color.g, color.b, color.a];
+    let totalDiff = 0;
 
     for (let i = 0; i < this.pixels.length; i++) {
       const p = this.pixels[i];
-      const ind = (p.x + p.y * graph.img.width) * 4;
-      let pixel_diff = 0;
+      const ind = (p.x + p.y * graph.image.width) * 4;
+      let pixelDiff = 0;
       for (let j = 0; j < 4; j++) {
-        const new_c =
-          color_arr[j] * this.fade +
-          graph.current_ctx_data[ind + j] * (1 - this.fade);
+        const newColor =
+          colorArr[j] * this.fade +
+          graph.currentCtxData[ind + j] * (1 - this.fade);
         const diff =
-          Math.abs(graph.orig_ctx_data[ind + j] - new_c) -
+          Math.abs(graph.originalCtxData[ind + j] - newColor) -
           Math.abs(
-            graph.current_ctx_data[ind + j] - graph.orig_ctx_data[ind + j],
+            graph.currentCtxData[ind + j] - graph.originalCtxData[ind + j],
           );
-        pixel_diff += diff;
+        pixelDiff += diff;
       }
-      if (pixel_diff < 0) {
-        total_diff += pixel_diff;
+      if (pixelDiff < 0) {
+        totalDiff += pixelDiff;
       }
-      if (pixel_diff > 0) {
-        total_diff += pixel_diff / 5;
+      if (pixelDiff > 0) {
+        totalDiff += pixelDiff / 5;
       }
     }
-    return Math.pow(total_diff / this.pixels.length, 3);
+    return Math.pow(totalDiff / this.pixels.length, 3);
   }
 
-  add_to_buffer(color: Color) {
-    this.draw(graph.current_ctx, color);
-    graph.current_ctx_data = graph.current_ctx.getImageData(
+  addToBuffer(color: Color) {
+    this.draw(graph.currentCtx, color);
+    graph.currentCtxData = graph.currentCtx.getImageData(
       0,
       0,
-      graph.img.width,
-      graph.img.height,
+      graph.image.width,
+      graph.image.height,
     ).data;
   }
 }
 
 class Thread {
-  public current_nail: number;
+  public currentNail: number;
   public color: Color;
-  public current_dist: number;
-  public nail_order: number[];
-  public next_weight: number;
-  public next_nail: number;
-  public next_valid: boolean;
-  public next_line: Line | null;
-  public next_dist: number;
-  public read_head: number;
-  public prev_connections: Array<Array<boolean> | undefined>;
+  public currentDist: number;
+  public nailOrder: number[];
+  public nextWeight: number;
+  public nextNail: number;
+  public nextValid: boolean;
+  public nextLine: Line | null;
+  public nextDist: number;
+  public readHead: number;
+  public previousConnections: Array<Array<boolean> | undefined>;
 
-  constructor(start_nail: number, color: Color) {
-    this.current_nail = start_nail;
+  constructor(startNail: number, color: Color) {
+    this.currentNail = startNail;
     this.color = color;
-    this.current_dist = Infinity;
-    this.nail_order = [start_nail];
-    this.next_weight = -Infinity;
-    this.next_nail = start_nail;
-    this.next_valid = false;
-    this.next_line = null;
-    this.next_dist = Infinity;
-    this.read_head = 0;
-    this.prev_connections = [];
+    this.currentDist = Infinity;
+    this.nailOrder = [startNail];
+    this.nextWeight = -Infinity;
+    this.nextNail = startNail;
+    this.nextValid = false;
+    this.nextLine = null;
+    this.nextDist = Infinity;
+    this.readHead = 0;
+    this.previousConnections = [];
   }
 
-  get_next_nail_weight(image: RasterImage) {
-    if (this.next_valid) {
-      return this.next_dist;
+  getNextNailWeight(image: RasterImage) {
+    if (this.nextValid) {
+      return this.nextDist;
     }
-    const chords = graph.get_connections(this.current_nail, image);
-    let min_dist = Infinity;
-    let min_dist_index = Math.floor(Math.random() * graph.num_nails);
+    const chords = graph.getConnections(this.currentNail, image);
+    let minDist = Infinity;
+    let minDistIndex = Math.floor(Math.random() * graph.numNails);
     chords.forEach((line, i) => {
       if (line) {
-        let dist = line.get_line_diff(this.color);
-        if (
-          this.prev_connections[this.current_nail] &&
-          this.prev_connections[this.current_nail][i] === true
-        ) {
+        let dist = line.getLineDiff(this.color);
+        if (this.previousConnections[this.currentNail] && this.previousConnections[this.currentNail][i] === true) {
           dist = 0;
         }
-        if (dist < min_dist) {
-          min_dist = dist;
-          min_dist_index = i;
+        if (dist < minDist) {
+          minDist = dist;
+          minDistIndex = i;
         }
       }
     });
-    if (min_dist >= 0) {
-      min_dist = Infinity;
+    if (minDist >= 0) {
+      minDist = Infinity;
     }
 
-    const selectedLine = chords[min_dist_index];
+    const selectedLine = chords[minDistIndex];
     if (!selectedLine) {
-      this.next_valid = false;
-      this.next_line = null;
-      this.next_dist = Infinity;
-      return this.next_dist;
+      this.nextValid = false;
+      this.nextLine = null;
+      this.nextDist = Infinity;
+      return this.nextDist;
     }
 
-    this.next_dist = min_dist;
-    this.next_nail = min_dist_index;
-    this.next_line = selectedLine;
-    this.next_valid = true;
-    return min_dist;
+    this.nextDist = minDist;
+    this.nextNail = minDistIndex;
+    this.nextLine = selectedLine;
+    this.nextValid = true;
+    return minDist;
   }
 
-  move_to_next_nail(image: RasterImage) {
-    if (!this.next_valid) {
-      this.get_next_nail_weight(image);
+  moveToNextNail(image: RasterImage) {
+    if (!this.nextValid) {
+      this.getNextNailWeight(image);
     }
-    if (!this.prev_connections[this.current_nail]) {
-      this.prev_connections[this.current_nail] = [];
+    if (!this.previousConnections[this.currentNail]) {
+      this.previousConnections[this.currentNail] = [];
     }
-    this.prev_connections[this.current_nail][this.next_nail] = true;
-    this.next_line?.add_to_buffer(this.color);
-    this.current_nail = this.next_nail;
-    this.nail_order.push(this.current_nail);
-    this.next_valid = false;
-    this.current_dist = this.next_dist;
-    this.get_next_nail_weight(image);
+    this.previousConnections[this.currentNail][this.nextNail] = true;
+    this.nextLine?.addToBuffer(this.color);
+    this.currentNail = this.nextNail;
+    this.nailOrder.push(this.currentNail);
+    this.nextValid = false;
+    this.currentDist = this.nextDist;
+    this.getNextNailWeight(image);
   }
 
-  get_next_nail_num() {
-    const nail = this.nail_order[this.read_head];
-    this.read_head++;
+  getNextNailNum() {
+    const nail = this.nailOrder[this.readHead];
+    this.readHead++;
     return nail;
   }
 
-  get_current_line() {
-    const start = graph.nails_pos[this.nail_order[this.nail_order.length - 1]];
-    const end = graph.nails_pos[this.nail_order[this.nail_order.length - 2]];
+  getCurrentLine() {
+    const start = graph.nailsPosition[this.nailOrder[this.nailOrder.length - 1]];
+    const end = graph.nailsPosition[this.nailOrder[this.nailOrder.length - 2]];
     return [
       [start.x, start.y],
       [end.x, end.y],
@@ -286,24 +283,24 @@ export const registerGUI = (gui: any) => {
 export const graph: any = {
   init() {
     const GUI = getGUI();
-    this.render_timeout_id = null;
-    this.render_iter = 0;
+    this.renderTimeoutId = null;
+    this.renderIter = 0;
     this.width = 30;
     this.height = this.width;
     this.radius = this.width / 3;
-    this.max_iter = Number(GUI.num_connections.element.value);
-    this.num_nails = Number(GUI.num_nails.element.value);
+    this.maxIter = Number(GUI.numConnections.element.value);
+    this.numNails = Number(GUI.numNails.element.value);
 
-    this.downscale_factor = 4;
+    this.downscaleFactor = 4;
 
-    this.thread_diam = 0.01; // thread width in inches
-    this.nail_diam = 0.1;
-    this.nails_pos = [];
+    this.threadDiameter = 0.01; // thread width in inches
+    this.nailDiameter = 0.1;
+    this.nailsPosition = [];
 
-    this.line_cache = {};
+    this.lineCache = {};
 
-    this.thread_opacity = 1.0;
-    this.thread_order = [];
+    this.threadOpacity = 1.0;
+    this.threadOrder = [];
 
     this.svg = d3
       .select('body')
@@ -313,7 +310,7 @@ export const graph: any = {
     this.svg.append('g');
     this.svg.attr('desc', 'Created using michael-crum.com/string-art-gen');
 
-    const frame_path = this.svg
+    const framePath = this.svg
       .select('g')
       .append('circle')
       .attr('r', this.radius)
@@ -321,43 +318,43 @@ export const graph: any = {
       .style('stroke-width', 10)
       .style('fill', 'none');
 
-    this.frame_bb = frame_path.node().getBBox();
+    this.frameBoundingBox = framePath.node().getBBox();
 
-    const nails_lst: number[] = [];
-    for (let i = 0; i < this.num_nails; i++) {
-      nails_lst.push(i);
+    const nailsList: number[] = [];
+    for (let i = 0; i < this.numNails; i++) {
+      nailsList.push(i);
     }
-    const frame_length = frame_path.node().getTotalLength();
+    const frameLength = framePath.node().getTotalLength();
 
     const nails = this.svg
       .select('g')
       .selectAll('circle.nail')
-      .data(nails_lst)
+      .data(nailsList)
       .join('g')
       .attr('transform', (d) => {
-        const pos = frame_path.node().getPointAtLength((d / this.num_nails) * frame_length);
-        this.nails_pos.push(new Point(pos.x, pos.y));
+        const pos = framePath.node().getPointAtLength((d / this.numNails) * frameLength);
+        this.nailsPosition.push(new Point(pos.x, pos.y));
         return `translate(${pos.x}, ${pos.y})`;
       });
     nails
       .append('circle')
       .attr('class', 'nail')
-      .attr('r', this.nail_diam / 2)
+      .attr('r', this.nailDiameter / 2)
       .attr('fill', 'aqua');
 
     nails
       .append('text')
       .style('fill', 'black')
-      .style('stroke-width', `${this.nail_diam / 100}`)
+      .style('stroke-width', `${this.nailDiameter / 100}`)
       .style('stroke', 'white')
       .attr('dx', '0')
-      .attr('dy', `${(this.nail_diam / 2) * 0.7}`)
-      .attr('font-size', `${this.nail_diam}px`)
+      .attr('dy', `${(this.nailDiameter / 2) * 0.7}`)
+      .attr('font-size', `${this.nailDiameter}px`)
       .attr('text-anchor', 'middle')
       .text((d, i) => String(i));
 
-    this.get_frame_url();
-    frame_path.style('fill', 'grey');
+    this.getFrameUrl();
+    framePath.style('fill', 'grey');
 
     const zoom = d3.zoom().on('zoom', handleZoom);
 
@@ -367,7 +364,7 @@ export const graph: any = {
 
     d3.select('svg').call(zoom as any);
   },
-  get_frame_url() {
+  getFrameUrl() {
     const serializer = new XMLSerializer();
     let source = serializer.serializeToString(this.svg.node());
 
@@ -382,79 +379,78 @@ export const graph: any = {
     }
 
     source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
-    this.frame_url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
+    this.frameUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
   },
-  download_frame() {
+  downloadFrame() {
     const element = document.createElement('a');
-    element.setAttribute('href', `${this.frame_url}`);
+    element.setAttribute('href', `${this.frameUrl}`);
     element.setAttribute('download', 'frame.svg');
     element.style.display = 'none';
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
   },
-  download_nail_seq() {
-    let output = `Generated using https://michael-crum.com/string-art-gen/\n${this.render_iter} connections in total\n\n`;
-    const len = this.thread_order.length;
-    for (let i = 0; i < len; i++) {
-      const thread = this.threads[this.thread_order[i]];
-      if (i === 0 || this.thread_order[i - 1] !== this.thread_order[i]) {
+  downloadNailSeq() {
+    let output = `Generated using https://michael-crum.com/string-art-gen/\n${this.renderIter} connections in total\n\n`;
+    const length = this.threadOrder.length;
+    for (let i = 0; i < length; i++) {
+      const thread = this.threads[this.threadOrder[i]];
+      if (i === 0 || this.threadOrder[i - 1] !== this.threadOrder[i]) {
         output += `\nThread: [${thread.color.r}, ${thread.color.g}, ${thread.color.b}]\n`;
       }
 
-      output += thread.get_next_nail_num();
+      output += thread.getNextNailNum();
       output += '\n';
     }
     for (let i = 0; i < this.threads.length; i++) {
-      this.threads.read_head = 0;
+      this.threads[i].readHead = 0;
     }
     const url = 'data:text/plain;charset=utf-8,' + encodeURIComponent(output);
     const element = document.createElement('a');
     element.setAttribute('href', `${url}`);
-    element.setAttribute('download', 'nail_seq.txt');
+    element.setAttribute('download', 'nailSeq.txt');
     element.style.display = 'none';
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
   },
-  get_connections(nail_num: number) {
+  getConnections(nailNumber: number) {
     const ret: Array<Line | null> = [];
-    const src = this.nails_pos[nail_num];
-    for (let i = 0; i < this.num_nails; i++) {
-      if (i === nail_num) {
+    const src = this.nailsPosition[nailNumber];
+    for (let i = 0; i < this.numNails; i++) {
+      if (i === nailNumber) {
         ret[i] = null;
         continue;
       }
-      const key = `${Math.min(i, nail_num)}| ${Math.max(i, nail_num)} `;
-      const cache = this.line_cache[key];
+      const key = `${Math.min(i, nailNumber)}| ${Math.max(i, nailNumber)} `;
+      const cache = this.lineCache[key];
       if (cache) {
         ret[i] = cache;
         continue;
       }
-      const dst = this.nails_pos[i];
+      const dst = this.nailsPosition[i];
       const line = new Line(src, dst);
       ret[i] = line;
-      this.line_cache[key] = line;
+      this.lineCache[key] = line;
     }
     return ret;
   },
-  setup(img: RasterImage) {
-    this.render_iter = 0;
-    this.img = img;
-    this.image = img;
-    this.orig_ctx = img.ctx;
-    const scratch_canvas = document.createElement('canvas');
-    scratch_canvas.width = img.width;
-    scratch_canvas.height = img.height;
-    const current_canvas = document.createElement('canvas');
-    current_canvas.width = img.width;
-    current_canvas.height = img.height;
-    this.scratch_ctx = scratch_canvas.getContext('2d');
-    this.current_ctx = current_canvas.getContext('2d', { willReadFrequently: true });
-    this.current_ctx.fillStyle = 'grey';
-    this.current_ctx.fillRect(0, 0, this.img.width, this.img.height);
-    this.orig_ctx_data = this.orig_ctx.getImageData(0, 0, this.img.width, this.img.height).data;
-    this.current_ctx_data = this.current_ctx.getImageData(0, 0, this.img.width, this.img.height).data;
+  setup(image: RasterImage) {
+    this.renderIter = 0;
+    this.image = image;
+    this.originalCtx = image.ctx;
+    const scratchCanvas = document.createElement('canvas');
+    scratchCanvas.width = image.width;
+    scratchCanvas.height = image.height;
+    const currentCanvas = document.createElement('canvas');
+    currentCanvas.width = image.width;
+    currentCanvas.height = image.height;
+    this.scratchCtx = scratchCanvas.getContext('2d');
+    this.currentCtx = currentCanvas.getContext('2d', { willReadFrequently: true });
+    this.currentCtx.fillStyle = 'grey';
+    this.currentCtx.fillRect(0, 0, this.image.width, this.image.height);
+    this.originalCtxData = this.originalCtx.getImageData(0, 0, this.image.width, this.image.height).data;
+    this.currentCtxData = this.currentCtx.getImageData(0, 0, this.image.width, this.image.height).data;
 
     this.threads = [
       new Thread(0, new Color(0, 255, 255, 255)),
@@ -464,68 +460,68 @@ export const graph: any = {
       new Thread(0, new Color(255, 255, 255, 255)),
     ];
     this.svg.select('g').selectAll('.string').remove();
-    this.thread_order = [];
+    this.threadOrder = [];
   },
-  parse_image() {
-    if (this.render_iter >= this.max_iter) {
+  parseImage() {
+    if (this.renderIter >= this.maxIter) {
       this.clean();
       return;
     }
-    let min_thread;
-    let min_thread_index;
-    let min_thread_weight = Infinity;
+    let minThread;
+    let minThreadIndex;
+    let minThreadWeight = Infinity;
     for (let i = 0; i < this.threads.length; i++) {
-      const weight = this.threads[i].get_next_nail_weight(this.image);
-      if (weight <= min_thread_weight) {
-        min_thread_weight = weight;
-        min_thread_index = i;
-        min_thread = this.threads[i];
+      const weight = this.threads[i].getNextNailWeight(this.image);
+      if (weight <= minThreadWeight) {
+        minThreadWeight = weight;
+        minThreadIndex = i;
+        minThread = this.threads[i];
       }
     }
-    if (min_thread_weight === Infinity) {
+    if (minThreadWeight === Infinity) {
       this.clean();
       return;
     }
     const GUI = getGUI();
     GUI.generate.element.innerHTML = `<b>Generating... ${(
-      (this.render_iter / this.max_iter) *
+      (this.renderIter / this.maxIter) *
       100
     ).toFixed(2)}</b>%`;
-    min_thread!.move_to_next_nail(this.image);
-    this.thread_order.push(min_thread_index!);
-    if (min_thread!.nail_order.length > 1) {
+    minThread!.moveToNextNail(this.image);
+    this.threadOrder.push(minThreadIndex!);
+    if (minThread!.nailOrder.length > 1) {
       const simpleLine = d3.line();
       this.svg
         .select('g')
         .append('path')
-        .attr('d', simpleLine(min_thread!.get_current_line()))
+        .attr('d', simpleLine(minThread!.getCurrentLine()))
         .attr('class', 'string')
-        .style('stroke-width', this.thread_diam)
+        .style('stroke-width', this.threadDiameter)
         .style(
           'stroke',
-          `rgba(${min_thread!.color.r},${min_thread!.color.g},${min_thread!.color.b},${this.thread_opacity})`,
+          `rgba(${minThread!.color.r},${minThread!.color.g},${minThread!.color.b},${this.threadOpacity})`,
         )
         .style('fill', 'none');
     }
 
-    this.render_iter++;
-    this.render_timeout_id = window.setTimeout(() => {
-      this.parse_image();
+    this.renderIter++;
+    this.renderTimeoutId = window.setTimeout(() => {
+      this.parseImage();
     }, 0);
   },
   clean() {
     const GUI = getGUI();
     GUI.generate.element.innerHTML = '<b>Generate</b>';
-    clearTimeout(this.render_timeout_id);
+    clearTimeout(this.renderTimeoutId);
     this.svg.selectAll('g circle.nail').raise();
   },
 };
 
-export function render_image(url?: string) {
+export function renderImage(url?: string) {
   if (graph.svg) {
     graph.svg.selectAll('*').remove();
     graph.svg.remove();
-    clearTimeout(graph.render_timeout_id);
+    clearTimeout(graph.renderTimeoutId);
   }
   graph.init();
   const img = document.getElementById('snapshot');
@@ -547,25 +543,23 @@ export function render_image(url?: string) {
       throw new Error('Unable to acquire 2D rendering context');
     }
 
-    const max_res =
-      (graph.frame_bb.width / graph.thread_diam / 2) / graph.downscale_factor;
-    const frame_ar = graph.frame_bb.width / graph.frame_bb.height;
-    const img_ar = img.width / img.height;
-    canvas.width = frame_ar >= 1 ? max_res : max_res * frame_ar;
-    canvas.height = frame_ar < 1 ? max_res : max_res / frame_ar;
-    const w = frame_ar >= img_ar ? canvas.width : canvas.height * img_ar;
-    const h = frame_ar < img_ar ? canvas.height : canvas.width / img_ar;
+    const maxResolution =
+      (graph.frameBoundingBox.width / graph.threadDiameter / 2) / graph.downscaleFactor;
+    const frameAspectRatio = graph.frameBoundingBox.width / graph.frameBoundingBox.height;
+    const imageAspectRatio = img.width / img.height;
+    canvas.width = frameAspectRatio >= 1 ? maxResolution : maxResolution * frameAspectRatio;
+    canvas.height = frameAspectRatio < 1 ? maxResolution : maxResolution / frameAspectRatio;
+    const width = frameAspectRatio >= imageAspectRatio ? canvas.width : canvas.height * imageAspectRatio;
+    const height = frameAspectRatio < imageAspectRatio ? canvas.height : canvas.width / imageAspectRatio;
     ctx.drawImage(
       img,
-      -(w - canvas.width) / 2,
-      -(h - canvas.height) / 2,
-      w,
-      h,
+      -(width - canvas.width) / 2,
+      -(height - canvas.height) / 2,
+      width,
+      height,
     );
-    const new_img = new RasterImage(ctx, canvas.width, canvas.height);
-    graph.setup(new_img);
-    graph.parse_image();
+    const rasterImage = new RasterImage(ctx, canvas.width, canvas.height);
+    graph.setup(rasterImage);
+    graph.parseImage();
   };
 }
-
-export const renderImage = render_image;

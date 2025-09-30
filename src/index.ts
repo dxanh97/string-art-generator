@@ -1,4 +1,4 @@
-import { constrain, graph, render_image, registerGUI } from '../dist/core.js';
+import { constrain, graph, renderImage, registerGUI } from './core.js';
 
 class UIElement {
   public desc: string;
@@ -37,13 +37,13 @@ class Slider extends UIElement {
     desc: string,
     name: string,
     parent: HTMLElement,
-    init_val: number,
+    initialValue: number,
     min: number,
     max: number,
     callback: (value: number) => void,
   ) {
     super(desc, name, parent, callback, true);
-    this.val = init_val;
+    this.val = initialValue;
     this.min = min;
     this.max = max;
     this.element = document.createElement('input');
@@ -128,47 +128,47 @@ if (!downloadSection || !basicOptionsSection || !controlsSection) {
 
 const GUI: any = {
   init() {
-    this.nail_seq_download = new Button(
+    this.nailSequenceDownload = new Button(
       'Nail sequence',
-      'nail_sequence',
+      'nailSequence',
       downloadSection,
       () => {
-        graph.download_nail_seq();
+        graph.downloadNailSeq();
       },
     );
-    this.frame_download = new Button(
+    this.frameDownload = new Button(
       'Frame with numbering',
-      'frame_download',
+      'frameDownload',
       downloadSection,
       () => {
-        graph.download_frame();
+        graph.downloadFrame();
       },
     );
     this.generate = new Button('Generate', 'generate', controlsSection, () =>
-      render_image(),
+      renderImage(),
     );
-    this.num_nails = new Slider(
+    this.numNails = new Slider(
       'Number of nails:',
-      'num_nails',
+      'numNails',
       basicOptionsSection,
       300,
       10,
       2000,
       (value) => {
-        graph.num_nails = value;
-        render_image();
+        graph.numNails = value;
+        renderImage();
       },
     );
-    this.num_connections = new Slider(
+    this.numConnections = new Slider(
       'Max # of connections:',
-      'num_connections',
+      'numConnections',
       basicOptionsSection,
       10000,
       100,
       15000,
       (value) => {
-        graph.max_iter = value;
-        render_image();
+        graph.maxIter = value;
+        renderImage();
       },
     );
   },
@@ -177,13 +177,15 @@ const GUI: any = {
 GUI.init();
 registerGUI(GUI);
 
-const input = document.querySelector("input[type='file']");
-if (!(input instanceof HTMLInputElement)) {
+renderImage();
+
+const inputElement = document.querySelector("input[type='file']");
+if (!(inputElement instanceof HTMLInputElement)) {
   throw new Error('File input element not found');
 }
-input.addEventListener('change', function (this: HTMLInputElement) {
+inputElement.addEventListener('change', function (this: HTMLInputElement) {
   if (this.files && this.files[0]) {
-    render_image(URL.createObjectURL(this.files[0]));
+    renderImage(URL.createObjectURL(this.files[0]));
   }
 });
 
