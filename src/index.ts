@@ -27,7 +27,7 @@ class UIElement {
   }
 }
 
-class Slider extends UIElement {
+class NumberInput extends UIElement {
   public val: number;
   public min: number;
   public max: number;
@@ -99,31 +99,12 @@ class Button extends UIElement {
   }
 }
 
-class TextEntry extends UIElement {
-  public element: HTMLInputElement;
-
-  constructor(
-    desc: string,
-    name: string,
-    parent: HTMLElement,
-    value: string,
-    callback: (event: Event) => void,
-  ) {
-    super(desc, name, parent, callback, true);
-    this.element = document.createElement('input');
-    this.element.type = 'text';
-    this.element.value = value;
-    this.element.addEventListener('change', callback);
-    parent.appendChild(this.element);
-  }
-}
-
 const downloadSection = document.getElementById('download');
 const basicOptionsSection = document.getElementById('basic');
 const controlsSection = document.getElementById('controls');
 
 if (!downloadSection || !basicOptionsSection || !controlsSection) {
-  throw new Error('Failed to initialise UI sections');
+  throw new Error('Failed to initialize UI sections');
 }
 
 const GUI: any = {
@@ -147,7 +128,7 @@ const GUI: any = {
     this.generate = new Button('Generate', 'generate', controlsSection, () =>
       renderImage(),
     );
-    this.numNails = new Slider(
+    this.numNails = new NumberInput(
       'Number of nails:',
       'numNails',
       basicOptionsSection,
@@ -159,7 +140,7 @@ const GUI: any = {
         renderImage();
       },
     );
-    this.numConnections = new Slider(
+    this.numConnections = new NumberInput(
       'Max # of connections:',
       'numConnections',
       basicOptionsSection,

@@ -8,7 +8,7 @@
     // Environment Settings
     "module": "es2020",
     "target": "es2020",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "lib": ["dom", "dom.iterable", "es2020"],
     "types": ["d3"],
 
