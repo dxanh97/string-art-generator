@@ -74,7 +74,7 @@ canvas {
 
 .slider,
 .text_entry,
-#regenerate {
+#generate {
     width: 100%;
 }
 
@@ -83,7 +83,7 @@ canvas {
     overflow: wrap;
 }
 
-#regenerate {
+#generate {
     height: 60px;
 }
 

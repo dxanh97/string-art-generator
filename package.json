@@ -1,0 +1,28 @@
+{
+  "name": "string-art-generator",
+  "version": "1.0.0",
+  "description": "Use the tool: https://michael-crum.com/string-art-gen/",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch --preserveWatchOutput",
+    "dev": "concurrently \"npm:watch\" \"lite-server --baseDir=.\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dxanh97/string-art-generator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/dxanh97/string-art-generator/issues"
+  },
+  "homepage": "https://github.com/dxanh97/string-art-generator#readme",
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "concurrently": "^9.2.1",
+    "lite-server": "^2.6.1",
+    "typescript": "^5.9.2"
+  }
+}
