@@ -280,6 +280,7 @@ export interface GraphOptions {
   numNails: number;
   maxConnections: number;
   onProgress?: ProgressCallback;
+  monochrome?: boolean;
 }
 
 const noopProgress: ProgressCallback = () => {};
@@ -289,6 +290,7 @@ export const graph: any = {
     numNails: 300,
     maxConnections: 10000,
     onProgress: noopProgress,
+    monochrome: false,
   } as GraphOptions,
   progressCallback: noopProgress,
   init(options: GraphOptions) {
@@ -301,6 +303,7 @@ export const graph: any = {
     this.radius = this.width / 3;
     this.maxIter = options.maxConnections;
     this.numNails = options.numNails;
+    this.monochrome = options.monochrome ?? false;
 
     this.downscaleFactor = 4;
 
@@ -371,7 +374,7 @@ export const graph: any = {
       .attr('text-anchor', 'middle')
       .text((d, i) => String(i));
 
-    framePath.style('fill', 'grey');
+    framePath.style('fill', 'white');
 
     const zoom = d3.zoom().on('zoom', handleZoom);
 
@@ -464,13 +467,16 @@ export const graph: any = {
       this.image.height,
     ).data;
 
-    this.threads = [
-      new Thread(0, new Color(0, 255, 255, 255)),
-      new Thread(0, new Color(255, 0, 255, 255)),
-      new Thread(0, new Color(255, 255, 0, 255)),
-      new Thread(0, new Color(0, 0, 0, 255)),
-      new Thread(0, new Color(255, 255, 255, 255)),
-    ];
+    const threadColors = this.monochrome
+      ? [new Color(0, 0, 0, 255), new Color(255, 255, 255, 255)]
+      : [
+          new Color(0, 255, 255, 255),
+          new Color(255, 0, 255, 255),
+          new Color(255, 255, 0, 255),
+          new Color(255, 255, 255, 255),
+          new Color(0, 0, 0, 255),
+        ];
+    this.threads = threadColors.map((color) => new Thread(0, color));
     this.svg.select('g').selectAll('.string').remove();
     this.threadOrder = [];
   },

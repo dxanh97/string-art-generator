@@ -1,19 +1,13 @@
-import {
-  ChangeEvent,
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { ChangeEvent, FC, useCallback, useMemo, useState } from 'react';
 import { constrain, graph, renderImage, type GraphOptions } from './core';
 
 const clamp = (value: number, min: number, max: number) =>
   constrain(Number.isNaN(value) ? min : value, min, max);
 
 const App: FC = () => {
-  const [numNails, setNumNails] = useState<number>(300);
-  const [maxConnections, setMaxConnections] = useState<number>(10000);
+  const [numNails, setNumNails] = useState<number>(220);
+  const [maxConnections, setMaxConnections] = useState<number>(6000);
+  const [monochrome, setMonochrome] = useState<boolean>(true);
   const [progress, setProgress] = useState<number>(1);
 
   const progressLabel = useMemo(() => {
@@ -28,8 +22,9 @@ const App: FC = () => {
       numNails,
       maxConnections,
       onProgress: setProgress,
+      monochrome,
     }),
-    [numNails, maxConnections],
+    [numNails, maxConnections, monochrome],
   );
 
   const triggerRender = useCallback(
@@ -77,6 +72,10 @@ const App: FC = () => {
     if (!file) return;
     const url = URL.createObjectURL(file);
     triggerRender(url);
+  };
+
+  const handleMonochromeChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setMonochrome(event.target.checked);
   };
 
   return (
@@ -145,6 +144,15 @@ const App: FC = () => {
             )
           }
         />
+        <label htmlFor="monochrome">
+          <input
+            id="monochrome"
+            type="checkbox"
+            checked={monochrome}
+            onChange={handleMonochromeChange}
+          />{' '}
+          Use black & white threads only
+        </label>
       </details>
     </div>
   );
